@@ -1,25 +1,46 @@
-import { useState } from 'react';
-import './Counter.css';
+import { useEffect } from 'react';
+import { WASI } from '@wasmer/wasi';
+import { lowerI64Imports } from '@wasmer/wasm-transformer';
+import React from 'react';
 
-export default function Counter({
-	children,
-	count: initialCount,
-}: {
-	children: JSX.Element;
-	count: number;
-}) {
-	const [count, setCount] = useState(initialCount);
-	const add = () => setCount((i) => i + 1);
-	const subtract = () => setCount((i) => i - 1);
+const wasmFilePath = 'main.wasm';
+
+const HelloComponent = () => {
+	useEffect(() => {
+		let wasi = new WASI({
+			args: [],
+			env: {},
+		});
+
+		const loadWasm = async () => {
+			const response = await fetch(wasmFilePath);
+			const wasmBinary = await response.arrayBuffer();
+			const wasm_bytes = new Uint8Array(wasmBinary).buffer;
+			const lowered_wasm = await lowerI64Imports(wasm_bytes);
+			let module = await WebAssembly.compile(lowered_wasm);
+
+			// console.log(wasi.getImports(module));
+			const instance = await WebAssembly.instantiate(module, {
+				...wasi.getImports(module),
+			});
+			// console.log(instance.exports);
+			wasi.memory = new WebAssembly.Memory({
+				initial: 10,
+				maximum: 100,
+			});
+			instance.exports.hs_init(0, 0);
+
+			console.log(instance.exports.fib(10));
+		};
+
+		loadWasm();
+	}, []);
 
 	return (
-		<>
-			<div className="counter">
-				<button onClick={subtract}>-</button>
-				<pre>{count}</pre>
-				<button onClick={add}>+</button>
-			</div>
-			<div className="counter-message">{children}</div>
-		</>
+		<div>
+			<p>Open the browser console to see the result.</p>
+		</div>
 	);
-}
+};
+
+export default HelloComponent;
