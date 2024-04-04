@@ -23,11 +23,12 @@ const HelloComponent = () => {
 			const instance = await WebAssembly.instantiate(module, {
 				...wasi.getImports(module),
 			});
-			// console.log(instance.exports);
+			console.log(instance.exports);
 			wasi.memory = new WebAssembly.Memory({
 				initial: 10,
 				maximum: 100,
 			});
+			instance.exports._initialize();
 			instance.exports.hs_init(0, 0);
 
 			console.log(instance.exports.fib(10));
